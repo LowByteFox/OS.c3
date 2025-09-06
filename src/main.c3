@@ -1,3 +1,4 @@
+/* SPDX-License-Identifier: BSD-2-Clause */
 module kernel;
 
 enum VgaColor : const inline int {
@@ -65,8 +66,16 @@ fn void terminal_putentryat(char c, char color, usz x, usz y)
 
 fn void terminal_putchar(char c)
 {
-	terminal_putentryat(c, terminal_color, terminal_column, terminal_row);
-	if (++terminal_column == VGA_WIDTH) {
+    switch (c) {
+    case '\n':
+        terminal_column = 0;
+        terminal_row++;
+    default:
+	    terminal_putentryat(c, terminal_color, terminal_column, terminal_row);
+        terminal_column++;
+    }
+
+	if (terminal_column == VGA_WIDTH) {
 		terminal_column = 0;
 
 		if (++terminal_row == VGA_HEIGHT) terminal_row = 0;
@@ -83,7 +92,7 @@ fn void terminal_write(char* data, usz size)
 fn void kernel_main() @export("kernel_main")
 {
     terminal_initialize();
-    char[] str = "Hello, kernel World from C3!";
+    char[] str = "Hello, kernel World from C3!\nText after newline";
 
     terminal_write(str.ptr, str.len);
 

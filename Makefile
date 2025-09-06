@@ -9,7 +9,6 @@ C3FLAGS = --quiet --target elf-x86 --use-stdlib=no --strip-unused=no --safe=no -
 LDFLAGS = -ffreestanding -nostdlib -T src/linker.ld -lgcc
 
 BIN = kernel.elf
-
 OBJS = src/boot.o src/main.o
 
 all: $(BIN)

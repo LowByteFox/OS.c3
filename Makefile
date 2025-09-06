@@ -1,36 +1,62 @@
 # SPDX-License-Identifier: BSD-2-Clause
 .POSIX:
+ARCH = i386
+K = kernel
+C = libc
+KARCH = $(K)/arch/$(ARCH)
+CARCH = $(C)/arch/$(ARCH)
+
 AS = i686-elf-as
+AR = i686-elf-ar
 CC = i686-elf-cc
 C3C = c3c
 
 CFLAGS = -std=c99 -Wall -Wextra -Wpedantic -Werror
-C3FLAGS = --quiet --target elf-x86 --use-stdlib=no --strip-unused=no --safe=no --single-module=yes
-LDFLAGS = -ffreestanding -nostdlib -T src/linker.ld -lgcc
+C3FLAGS = --quiet --obj-out kernel --output-dir kernel --no-headers
+LDFLAGS = -ffreestanding -nostdlib -T $(KARCH)/linker.ld -Lkernel -lkernel -lgcc
 
 BIN = kernel.elf
-OBJS = src/boot.o src/main.o
+LIB = libc.a
+LIBKERNEL = kernel/libkernel.a
 
-all: $(BIN)
+OBJS = $(KARCH)/boot.o $(LIBKERNEL)
+
+CRT = $(CARCH)/crti.o $(CARCH)/crtn.o
+LIB_OBJS = 
+
+all: $(BIN) $(LIB)
 
 $(BIN): $(OBJS)
-	@echo "  LD  $@"
+	@echo "  LD   $@"
 	@$(CC) $(OBJS) $(LDFLAGS) -o $@
+	@echo "========== kernel image compiled =========="
+
+$(LIB): $(LIB_OBJS) $(CRT)
+	@echo "  C3C  $@"
+	@$(C3C) build libc --quiet --obj-out libc --output-dir libc --no-headers
+	@rmdir build
+	@echo "  AR   $@"
+	@$(AR) rcs $@ $(LIB_OBJS) libc/*.o
+	@echo "========== libc.a library compiled =========="
+
+$(LIBKERNEL):
+	@echo "  C3C  $@"
+	@$(C3C) build libkernel $(C3FLAGS) -o $@
+	@rmdir build
 
 .c.o:
-	@echo "  CC  $<"
+	@echo "  CC   $<"
 	@$(CC) $(CFLAGS) -c $< -o $@
 
-.c3.o:
-	@echo "  C3C $<"
-	@$(C3C) compile-only $(C3FLAGS) $< -o $@
-
 .s.o:
-	@echo "  AS  $<"
+	@echo "  AS   $<"
 	@$(AS) -c $< -o $@
 
 clean:
-	rm -f $(BIN) $(OBJS)
+	rm -f $(BIN) $(LIB) $(CRT) $(OBJS) $(LIB_OBJS) libc/*.o -r rootfs output.iso
 
-.PHONY: all clean install uninstall
+iso: all
+	./scripts/iso.sh
+
+.PHONY: all clean iso
 .SUFFIXES: .c .c3 .s

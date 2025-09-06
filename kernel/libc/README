@@ -1,0 +1,3 @@
+kernel/libc
+==========
+Functions provided for libgcc in case it would call one of those

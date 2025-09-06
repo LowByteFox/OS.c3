@@ -1,2 +1,7 @@
 kernel.elf
+rootfs
+libc.a
+kernel/libkernel.a
+iso_tmp
+output.iso
 *.o

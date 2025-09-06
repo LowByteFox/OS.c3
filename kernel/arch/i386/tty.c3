@@ -1,5 +1,5 @@
 /* SPDX-License-Identifier: BSD-2-Clause */
-module kernel;
+module kernel::arch::tty;
 
 enum VgaColor : const inline int {
     BLACK,
@@ -34,16 +34,16 @@ const VGA_WIDTH = 80;
 const VGA_HEIGHT = 25;
 const VGA_MEMORY = 0xB8000;
 
-usz terminal_row;
-usz terminal_column;
-char terminal_color;
-ushort* terminal_buffer = (ushort*) VGA_MEMORY;
+usz terminal_row @local;
+usz terminal_column @local;
+char terminal_color @local;
+ushort* terminal_buffer @local = (ushort*) VGA_MEMORY;
 
-fn void terminal_initialize() 
+fn void initialize() 
 {
 	terminal_row = 0;
 	terminal_column = 0;
-	terminal_color = vga_entry_color(WHITE, BLUE);
+	terminal_color = vga_entry_color(WHITE, BLACK);
 
 	for (usz y = 0; y < VGA_HEIGHT; y++) {
 		for (usz x = 0; x < VGA_WIDTH; x++) {
@@ -53,25 +53,27 @@ fn void terminal_initialize()
 	}
 }
 
-fn void terminal_setcolor(char color) 
+fn void setcolor(char color) 
 {
 	terminal_color = color;
 }
 
-fn void terminal_putentryat(char c, char color, usz x, usz y) 
+fn void putentryat(char c, char color, usz x, usz y) @local
 {
 	usz index = y * VGA_WIDTH + x;
 	terminal_buffer[index] = vga_entry(c, color);
 }
 
-fn void terminal_putchar(char c)
+fn void putchar(char c) => putchar_color(c, terminal_color);
+
+fn void putchar_color(char c, char color)
 {
     switch (c) {
     case '\n':
         terminal_column = 0;
         terminal_row++;
     default:
-	    terminal_putentryat(c, terminal_color, terminal_column, terminal_row);
+	    putentryat(c, color, terminal_column, terminal_row);
         terminal_column++;
     }
 
@@ -82,19 +84,11 @@ fn void terminal_putchar(char c)
 	}
 }
 
-fn void terminal_write(char* data, usz size) 
+fn void write(char *data, usz size) => write_color(data, size, terminal_color);
+
+fn void write_color(char *data, usz size, char color)
 {
 	for (usz i = 0; i < size; i++) {
-		terminal_putchar(data[i]);
+		putchar_color(data[i], color);
     }
-}
-
-fn void kernel_main() @export("kernel_main")
-{
-    terminal_initialize();
-    char[] str = "Hello, kernel World from C3!\nText after newline";
-
-    terminal_write(str.ptr, str.len);
-
-    asm("hlt");
 }
